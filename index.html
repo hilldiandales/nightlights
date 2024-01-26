@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <!-- optional if mapbox base map is needed -->
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.0/mapbox-gl.js"></script>
+    <link
+      href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <!-- Allow the map to render in full screen -->
+
+    <!-- Chart JS for Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
+
+      body {
+        margin: 0;
+        font-family: "Roboto", sans-serif;
+        display: flex;
+        flex-direction: column;
+        /* height: 100vh; */
+      }
+
+      .map-container {
+        flex-grow: 1;
+        position: relative;
+        height: 90vh;
+        overflow: hidden;
+      }
+
+      #map-legend {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 80px;
+        background-color: #0f3554;
+        z-index: 5;
+      }
+
+      .legend__section {
+        display: flex;
+        align-items: center;
+        justify-content: start;
+        width: 100%;
+        height: 100%;
+      }
+
+      .date__holder p {
+        font-size: 18px;
+        font-weight: 600;
+        padding-left: 20px;
+        color: #fff;
+      }
+
+      .date__holder {
+        width: 15%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        background-color: #0f3554;
+      }
+
+      .input__bar {
+        width: 80%;
+        padding-left: 8px;
+      }
+
+      .input__bar input#date-slide {
+        width: 100%;
+        height: 20px;
+        -webkit-appearance: none;
+        margin: 10px 0;
+      }
+
+      /* Style for the track (the slider line) */
+      .input__bar input#date-slide::-webkit-slider-runnable-track {
+        height: 3px;
+        background: #2c353c70;
+        border-radius: 2px;
+      }
+
+      /* Style for the thumb (the slider handle) */
+      .input__bar input#date-slide::-webkit-slider-thumb {
+        height: 20px;
+        width: 10px;
+        background: #2c353c70;
+        border: 1px solid #2c353c70;
+        -webkit-appearance: none;
+        margin-top: -8px;
+      }
+
+      /* Style for the colored portion of the track (selected range) */
+      input[type="range"]::-webkit-slider-runnable-track::-moz-range-progress {
+        background-color: #007bff;
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track::-webkit-progress-value {
+        background-color: #007bff;
+      }
+
+      #myChart {
+        width: 100%;
+        height: 300px;
+      }
+
+      .graph-container {
+        /* display: grid; */
+        /* grid-template-columns: repeat(2, 1fr); */
+        gap: 1.5rem;
+        width: 70%;
+        /* padding: 2rem; */
+        margin-top: 1rem;
+        /* overflow: hidden; */
+      }
+
+      .graph-container .chart-container {
+        border: 1px solid #2c353c70;
+        padding: 5px;
+        text-align: center;
+        border-radius: 10px;
+      }
+
+      .graph-container .chart-container h4 {
+        margin: 1rem 0;
+      }
+
+      /* .graph-container {
+        display: flex;
+        flex-wrap: wrap;
+      } */
+
+      .chart-container {
+        display: none;
+      }
+
+      .active-chart {
+        display: block;
+      }
+
+      .tab-button {
+        border: none;
+        padding: 10px;
+        margin: 0;
+        cursor: pointer;
+      }
+
+      .tab-button.active {
+        background: #0f3554;
+        color: #fff; /* Active color for the selected tab */
+      }
+
+      #tabs-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        margin-top: 1rem;
+        padding: 2rem;
+      }
+
+      /* Article related styles */
+      .article-container {
+        background-color: black;
+      }
+
+      article {
+        width: 60%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      article .container {
+        margin-bottom: 30px;
+      }
+
+      .display-flex {
+        display: flex;
+        align-items: center;
+      }
+
+      .display-flex.content-space-between {
+        justify-content: space-between;
+      }
+
+      article header .header {
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 50px;
+      }
+
+      article .image-container {
+        width: 30%;
+      }
+
+      article .image-container img {
+        width: 100%; /* Make the image fill the container */
+        height: auto; /* Maintain the aspect ratio of the image */
+        display: block;
+      }
+
+      article .image-container .image-desc {
+        color: #bac8d6;
+        font-size: 70%;
+      }
+
+      article .text-container {
+        width: 60%;
+        color: #bebdb1;
+        font-weight: 400;
+        font-size: 16px;
+        line-height: 31px;
+      }
+
+      article .text-container.full {
+        width: auto;
+      }
+
+      @media screen and (max-width: 768px) {
+        article .container.display-flex {
+          flex-flow: column;
+        }
+
+        article .image-container,
+        article .text-container {
+          width: auto;
+        }
+      }
+
+      @media screen and (max-width: 500px) {
+        .date__holder {
+            width: 13%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="map-container" id="map-container">
+      <div id="map-legend">
+        <div class="legend__section">
+          <div class="date__holder">
+            <p id="selected-date">November 6, 2013</p>
+          </div>
+          <div class="input__bar">
+            <input
+              id="date-slide"
+              type="range"
+              min="0"
+              max="4"
+              step="1"
+              value="0"
+              oninput="updateDate(this.value);"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabs-container">
+      <div class="buttons-container">
+        <button
+          class="tab-button"
+          onclick="showChart('provinceOfLeyte')"
+          id="defaultOpen"
+        >
+          Province of Leyte
+        </button>
+        <button
+          class="tab-button"
+          onclick="showChart('provinceOfSouthernLeyte')"
+        >
+          Province of Southern Leyte
+        </button>
+        <button class="tab-button" onclick="showChart('provinceOfBiliran')">
+          Province of Biliran
+        </button>
+        <button
+          class="tab-button"
+          onclick="showChart('provinceOfEasternSamar')"
+        >
+          Province of Eastern Samar
+        </button>
+        <button
+          class="tab-button"
+          onclick="showChart('provinceOfNorthernSamar')"
+        >
+          Province of Northern Samar
+        </button>
+        <button class="tab-button" onclick="showChart('provinceOfSamar')">
+          Province of Samar
+        </button>
+      </div>
+
+      <div class="graph-container">
+        <!-- Province of Leyte -->
+        <div class="chart-container" id="provinceOfLeyteChart">
+          <h4>Province of Leyte</h4>
+          <canvas id="provinceOfLeyte"></canvas>
+
+          <script>
+            async function fetchJson() {
+              try {
+                const response = await fetch("region8_brightness.json");
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Error fetching JSON file: ${response.statusText}`
+                  );
+                }
+
+                const jsonData = await response.json();
+                return jsonData;
+              } catch (error) {
+                console.error(error.message);
+                return null;
+              }
+            }
+
+            async function renderChartLeyte() {
+              const jsonData = await fetchJson();
+
+              if (!jsonData) {
+                console.error("Failed to fetch JSON data");
+                return;
+              }
+
+              const leyteData = jsonData.filter(
+                (entry) => entry.province === "Leyte"
+              );
+
+              // Extract unique municipalities
+              const municipalities = Array.from(
+                new Set(leyteData.map((entry) => entry.municipality))
+              );
+
+              // Generate a random color for each municipality
+              const colors = municipalities.map(() => getRandomColor());
+
+              const datasets = municipalities.map((municipality, index) => {
+                const municipalityData = leyteData.filter(
+                  (entry) => entry.municipality === municipality
+                );
+                const brightnessValues = municipalityData.map((entry) =>
+                  Object.values(entry.absoluteBrightnessByDate)
+                )[0];
+
+                return {
+                  label: municipality,
+                  data: brightnessValues,
+                  borderColor: colors[index],
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  tension: 0.4,
+                  fill: false,
+                };
+              });
+
+              const dates = Object.keys(leyteData[0].absoluteBrightnessByDate);
+
+              const ctx = document
+                .getElementById("provinceOfLeyte")
+                .getContext("2d");
+
+              const data = {
+                labels: dates,
+                datasets: datasets,
+              };
+
+              const options = {
+                tooltips: {
+                  callbacks: {
+                    title: (tooltipItem) => tooltipItem[0].label,
+                    label: (tooltipItem, data) => {
+                      const datasetIndex = tooltipItem.datasetIndex;
+                      const dataIndex = tooltipItem.index;
+                      const entry = leyteData.find(
+                        (entry) =>
+                          entry.municipality === datasets[datasetIndex].label
+                      );
+
+                      return `Brightness: ${datasets[datasetIndex].data[dataIndex]} | Province: ${entry.province} | Municipality: ${entry.municipality} | Date: ${tooltipItem.label}`;
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "category",
+                    title: {
+                      display: true,
+                      text: "Date",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Brightness",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                },
+
+                legend: {
+                  display: false, // Hide the legend
+                },
+                plugins: {
+                  legend: {
+                    display: false, // Hide the legend (alternative method)
+                  },
+                  datalabels: {
+                    display: false, // Hide data labels
+                  },
+                },
+              };
+
+              console.log(options);
+
+              const myLineChart = new Chart(ctx, {
+                type: "line",
+                data: data,
+                options: options,
+              });
+            }
+
+            function getRandomColor() {
+              // Generate a random hex color
+              return "#" + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            // Call the function to render the chart
+            renderChartLeyte();
+          </script>
+        </div>
+
+        <!-- Province of Southern Leyte -->
+        <div class="chart-container" id="provinceOfSouthernLeyteChart">
+          <h4>Province of Southern Leyte</h4>
+          <canvas id="provinceOfSouthernLeyte"></canvas>
+
+          <script>
+            async function fetchJson() {
+              try {
+                const response = await fetch("region8_brightness.json");
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Error fetching JSON file: ${response.statusText}`
+                  );
+                }
+
+                const jsonData = await response.json();
+                return jsonData;
+              } catch (error) {
+                console.error(error.message);
+                return null;
+              }
+            }
+
+            async function renderChartSouthernLeyte() {
+              const jsonData = await fetchJson();
+
+              if (!jsonData) {
+                console.error("Failed to fetch JSON data");
+                return;
+              }
+
+              const leyteData = jsonData.filter(
+                (entry) => entry.province === "Southern Leyte"
+              );
+
+              // Extract unique municipalities
+              const municipalities = Array.from(
+                new Set(leyteData.map((entry) => entry.municipality))
+              );
+
+              // Generate a random color for each municipality
+              const colors = municipalities.map(() => getRandomColor());
+
+              const datasets = municipalities.map((municipality, index) => {
+                const municipalityData = leyteData.filter(
+                  (entry) => entry.municipality === municipality
+                );
+                const brightnessValues = municipalityData.map((entry) =>
+                  Object.values(entry.absoluteBrightnessByDate)
+                )[0];
+
+                return {
+                  label: municipality,
+                  data: brightnessValues,
+                  borderColor: colors[index],
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  tension: 0.4,
+                  fill: false,
+                };
+              });
+
+              const dates = Object.keys(leyteData[0].absoluteBrightnessByDate);
+
+              const ctx = document
+                .getElementById("provinceOfSouthernLeyte")
+                .getContext("2d");
+
+              const data = {
+                labels: dates,
+                datasets: datasets,
+              };
+
+              const options = {
+                tooltips: {
+                  callbacks: {
+                    title: (tooltipItem) => tooltipItem[0].label,
+                    label: (tooltipItem, data) => {
+                      const datasetIndex = tooltipItem.datasetIndex;
+                      const dataIndex = tooltipItem.index;
+                      const entry = leyteData.find(
+                        (entry) =>
+                          entry.municipality === datasets[datasetIndex].label
+                      );
+
+                      return `Brightness: ${datasets[datasetIndex].data[dataIndex]} | Province: ${entry.province} | Municipality: ${entry.municipality} | Date: ${tooltipItem.label}`;
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "category",
+                    title: {
+                      display: true,
+                      text: "Date",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Brightness",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                },
+
+                legend: {
+                  display: false, // Hide the legend
+                },
+                plugins: {
+                  legend: {
+                    display: false, // Hide the legend (alternative method)
+                  },
+                  datalabels: {
+                    display: false, // Hide data labels
+                  },
+                },
+              };
+
+              console.log(options);
+
+              const myLineChart = new Chart(ctx, {
+                type: "line",
+                data: data,
+                options: options,
+              });
+            }
+
+            function getRandomColor() {
+              // Generate a random hex color
+              return "#" + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            // Call the function to render the chart
+            renderChartSouthernLeyte();
+          </script>
+        </div>
+
+        <!-- Province of Biliran -->
+        <div class="chart-container" id="provinceOfBiliranChart">
+          <h4>Province of Biliran</h4>
+          <canvas id="provinceOfBiliran"></canvas>
+
+          <script>
+            async function fetchJson() {
+              try {
+                const response = await fetch("region8_brightness.json");
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Error fetching JSON file: ${response.statusText}`
+                  );
+                }
+
+                const jsonData = await response.json();
+                return jsonData;
+              } catch (error) {
+                console.error(error.message);
+                return null;
+              }
+            }
+
+            async function renderChartBiliran() {
+              const jsonData = await fetchJson();
+
+              if (!jsonData) {
+                console.error("Failed to fetch JSON data");
+                return;
+              }
+
+              const leyteData = jsonData.filter(
+                (entry) => entry.province === "Biliran"
+              );
+
+              // Extract unique municipalities
+              const municipalities = Array.from(
+                new Set(leyteData.map((entry) => entry.municipality))
+              );
+
+              // Generate a random color for each municipality
+              const colors = municipalities.map(() => getRandomColor());
+
+              const datasets = municipalities.map((municipality, index) => {
+                const municipalityData = leyteData.filter(
+                  (entry) => entry.municipality === municipality
+                );
+                const brightnessValues = municipalityData.map((entry) =>
+                  Object.values(entry.absoluteBrightnessByDate)
+                )[0];
+
+                return {
+                  label: municipality,
+                  data: brightnessValues,
+                  borderColor: colors[index],
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  tension: 0.4,
+                  fill: false,
+                };
+              });
+
+              const dates = Object.keys(leyteData[0].absoluteBrightnessByDate);
+
+              const ctx = document
+                .getElementById("provinceOfBiliran")
+                .getContext("2d");
+
+              const data = {
+                labels: dates,
+                datasets: datasets,
+              };
+
+              const options = {
+                tooltips: {
+                  callbacks: {
+                    title: (tooltipItem) => tooltipItem[0].label,
+                    label: (tooltipItem, data) => {
+                      const datasetIndex = tooltipItem.datasetIndex;
+                      const dataIndex = tooltipItem.index;
+                      const entry = leyteData.find(
+                        (entry) =>
+                          entry.municipality === datasets[datasetIndex].label
+                      );
+
+                      return `Brightness: ${datasets[datasetIndex].data[dataIndex]} | Province: ${entry.province} | Municipality: ${entry.municipality} | Date: ${tooltipItem.label}`;
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "category",
+                    title: {
+                      display: true,
+                      text: "Date",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Brightness",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                },
+
+                legend: {
+                  display: false, // Hide the legend
+                },
+                plugins: {
+                  legend: {
+                    display: false, // Hide the legend (alternative method)
+                  },
+                  datalabels: {
+                    display: false, // Hide data labels
+                  },
+                },
+              };
+
+              console.log(options);
+
+              const myLineChart = new Chart(ctx, {
+                type: "line",
+                data: data,
+                options: options,
+              });
+            }
+
+            function getRandomColor() {
+              // Generate a random hex color
+              return "#" + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            // Call the function to render the chart
+            renderChartBiliran();
+          </script>
+        </div>
+
+        <!-- Province of Eastern Samar -->
+        <div class="chart-container" id="provinceOfEasternSamarChart">
+          <h4>Province of Eastern Samar</h4>
+          <canvas id="provinceOfEasternSamar"></canvas>
+
+          <script>
+            async function fetchJson() {
+              try {
+                const response = await fetch("region8_brightness.json");
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Error fetching JSON file: ${response.statusText}`
+                  );
+                }
+
+                const jsonData = await response.json();
+                return jsonData;
+              } catch (error) {
+                console.error(error.message);
+                return null;
+              }
+            }
+
+            async function renderChartEasternSamar() {
+              const jsonData = await fetchJson();
+
+              if (!jsonData) {
+                console.error("Failed to fetch JSON data");
+                return;
+              }
+
+              const leyteData = jsonData.filter(
+                (entry) => entry.province === "Eastern Samar"
+              );
+
+              // Extract unique municipalities
+              const municipalities = Array.from(
+                new Set(leyteData.map((entry) => entry.municipality))
+              );
+
+              // Generate a random color for each municipality
+              const colors = municipalities.map(() => getRandomColor());
+
+              const datasets = municipalities.map((municipality, index) => {
+                const municipalityData = leyteData.filter(
+                  (entry) => entry.municipality === municipality
+                );
+                const brightnessValues = municipalityData.map((entry) =>
+                  Object.values(entry.absoluteBrightnessByDate)
+                )[0];
+
+                return {
+                  label: municipality,
+                  data: brightnessValues,
+                  borderColor: colors[index],
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  tension: 0.4,
+                  fill: false,
+                };
+              });
+
+              const dates = Object.keys(leyteData[0].absoluteBrightnessByDate);
+
+              const ctx = document
+                .getElementById("provinceOfEasternSamar")
+                .getContext("2d");
+
+              const data = {
+                labels: dates,
+                datasets: datasets,
+              };
+
+              const options = {
+                tooltips: {
+                  callbacks: {
+                    title: (tooltipItem) => tooltipItem[0].label,
+                    label: (tooltipItem, data) => {
+                      const datasetIndex = tooltipItem.datasetIndex;
+                      const dataIndex = tooltipItem.index;
+                      const entry = leyteData.find(
+                        (entry) =>
+                          entry.municipality === datasets[datasetIndex].label
+                      );
+
+                      return `Brightness: ${datasets[datasetIndex].data[dataIndex]} | Province: ${entry.province} | Municipality: ${entry.municipality} | Date: ${tooltipItem.label}`;
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "category",
+                    title: {
+                      display: true,
+                      text: "Date",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Brightness",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                },
+
+                legend: {
+                  display: false, // Hide the legend
+                },
+                plugins: {
+                  legend: {
+                    display: false, // Hide the legend (alternative method)
+                  },
+                  datalabels: {
+                    display: false, // Hide data labels
+                  },
+                },
+              };
+
+              console.log(options);
+
+              const myLineChart = new Chart(ctx, {
+                type: "line",
+                data: data,
+                options: options,
+              });
+            }
+
+            function getRandomColor() {
+              // Generate a random hex color
+              return "#" + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            // Call the function to render the chart
+            renderChartEasternSamar();
+          </script>
+        </div>
+
+        <!-- Province of Northern Samar -->
+        <div class="chart-container" id="provinceOfNorthernSamarChart">
+          <h4>Province of Northern Samar</h4>
+          <canvas id="provinceOfNorthernSamar"></canvas>
+
+          <script>
+            async function fetchJson() {
+              try {
+                const response = await fetch("region8_brightness.json");
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Error fetching JSON file: ${response.statusText}`
+                  );
+                }
+
+                const jsonData = await response.json();
+                return jsonData;
+              } catch (error) {
+                console.error(error.message);
+                return null;
+              }
+            }
+
+            async function renderChartNorthernSamar() {
+              const jsonData = await fetchJson();
+
+              if (!jsonData) {
+                console.error("Failed to fetch JSON data");
+                return;
+              }
+
+              const leyteData = jsonData.filter(
+                (entry) => entry.province === "Northern Samar"
+              );
+
+              // Extract unique municipalities
+              const municipalities = Array.from(
+                new Set(leyteData.map((entry) => entry.municipality))
+              );
+
+              // Generate a random color for each municipality
+              const colors = municipalities.map(() => getRandomColor());
+
+              const datasets = municipalities.map((municipality, index) => {
+                const municipalityData = leyteData.filter(
+                  (entry) => entry.municipality === municipality
+                );
+                const brightnessValues = municipalityData.map((entry) =>
+                  Object.values(entry.absoluteBrightnessByDate)
+                )[0];
+
+                return {
+                  label: municipality,
+                  data: brightnessValues,
+                  borderColor: colors[index],
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  tension: 0.4,
+                  fill: false,
+                };
+              });
+
+              const dates = Object.keys(leyteData[0].absoluteBrightnessByDate);
+
+              const ctx = document
+                .getElementById("provinceOfNorthernSamar")
+                .getContext("2d");
+
+              const data = {
+                labels: dates,
+                datasets: datasets,
+              };
+
+              const options = {
+                tooltips: {
+                  callbacks: {
+                    title: (tooltipItem) => tooltipItem[0].label,
+                    label: (tooltipItem, data) => {
+                      const datasetIndex = tooltipItem.datasetIndex;
+                      const dataIndex = tooltipItem.index;
+                      const entry = leyteData.find(
+                        (entry) =>
+                          entry.municipality === datasets[datasetIndex].label
+                      );
+
+                      return `Brightness: ${datasets[datasetIndex].data[dataIndex]} | Province: ${entry.province} | Municipality: ${entry.municipality} | Date: ${tooltipItem.label}`;
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "category",
+                    title: {
+                      display: true,
+                      text: "Date",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Brightness",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                },
+
+                legend: {
+                  display: false, // Hide the legend
+                },
+                plugins: {
+                  legend: {
+                    display: false, // Hide the legend (alternative method)
+                  },
+                  datalabels: {
+                    display: false, // Hide data labels
+                  },
+                },
+              };
+
+              console.log(options);
+
+              const myLineChart = new Chart(ctx, {
+                type: "line",
+                data: data,
+                options: options,
+              });
+            }
+
+            function getRandomColor() {
+              // Generate a random hex color
+              return "#" + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            // Call the function to render the chart
+            renderChartNorthernSamar();
+          </script>
+        </div>
+
+        <!-- Province of Samar -->
+        <div class="chart-container" id="provinceOfSamarChart">
+          <h4>Province of Samar</h4>
+          <canvas id="provinceOfSamar"></canvas>
+
+          <script>
+            async function fetchJson() {
+              try {
+                const response = await fetch("region8_brightness.json");
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Error fetching JSON file: ${response.statusText}`
+                  );
+                }
+
+                const jsonData = await response.json();
+                return jsonData;
+              } catch (error) {
+                console.error(error.message);
+                return null;
+              }
+            }
+
+            async function renderChartSamar() {
+              const jsonData = await fetchJson();
+
+              if (!jsonData) {
+                console.error("Failed to fetch JSON data");
+                return;
+              }
+
+              const leyteData = jsonData.filter(
+                (entry) => entry.province === "Samar (Western Samar)"
+              );
+
+              // Extract unique municipalities
+              const municipalities = Array.from(
+                new Set(leyteData.map((entry) => entry.municipality))
+              );
+
+              // Generate a random color for each municipality
+              const colors = municipalities.map(() => getRandomColor());
+
+              const datasets = municipalities.map((municipality, index) => {
+                const municipalityData = leyteData.filter(
+                  (entry) => entry.municipality === municipality
+                );
+                const brightnessValues = municipalityData.map((entry) =>
+                  Object.values(entry.absoluteBrightnessByDate)
+                )[0];
+
+                return {
+                  label: municipality,
+                  data: brightnessValues,
+                  borderColor: colors[index],
+                  borderWidth: 1,
+                  pointRadius: 1,
+                  tension: 0.4,
+                  fill: false,
+                };
+              });
+
+              const dates = Object.keys(leyteData[0].absoluteBrightnessByDate);
+
+              const ctx = document
+                .getElementById("provinceOfSamar")
+                .getContext("2d");
+
+              const data = {
+                labels: dates,
+                datasets: datasets,
+              };
+
+              const options = {
+                tooltips: {
+                  callbacks: {
+                    title: (tooltipItem) => tooltipItem[0].label,
+                    label: (tooltipItem, data) => {
+                      const datasetIndex = tooltipItem.datasetIndex;
+                      const dataIndex = tooltipItem.index;
+                      const entry = leyteData.find(
+                        (entry) =>
+                          entry.municipality === datasets[datasetIndex].label
+                      );
+
+                      return `Brightness: ${datasets[datasetIndex].data[dataIndex]} | Province: ${entry.province} | Municipality: ${entry.municipality} | Date: ${tooltipItem.label}`;
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    type: "category",
+                    title: {
+                      display: true,
+                      text: "Date",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: "Brightness",
+                    },
+                    grid: {
+                      color: "#ccc", // Set the color of the vertical grid lines to #0f3554
+                    },
+                  },
+                },
+
+                legend: {
+                  display: false, // Hide the legend
+                },
+                plugins: {
+                  legend: {
+                    display: false, // Hide the legend (alternative method)
+                  },
+                  datalabels: {
+                    display: false, // Hide data labels
+                  },
+                },
+              };
+
+              console.log(options);
+
+              const myLineChart = new Chart(ctx, {
+                type: "line",
+                data: data,
+                options: options,
+              });
+            }
+
+            function getRandomColor() {
+              // Generate a random hex color
+              return "#" + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            // Call the function to render the chart
+            renderChartSamar();
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <!-- Article Related Content -->
+    <div class="article-container">
+      <article>
+        <header>
+          <h1 class="header">
+            Monitoring the Post-Supertyphoon Recovery Through NASA Satellite
+            Brightness Data
+          </h1>
+        </header>
+        <div class="container">
+          <p class="text-container full">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Sem
+            viverra aliquet eget sit amet tellus. Ligula ullamcorper malesuada
+            proin libero nunc consequat interdum varius. Scelerisque viverra
+            mauris in aliquam sem fringilla ut morbi. Quisque sagittis purus sit
+            amet volutpat consequat. Amet justo donec enim diam. Amet aliquam id
+            diam maecenas ultricies mi. Malesuada nunc vel risus commodo
+            viverra. Tempus quam pellentesque nec nam aliquam sem et. Lorem sed
+            risus ultricies tristique nulla aliquet enim tortor.
+          </p>
+        </div>
+        <div class="container display-flex content-space-between">
+          <p class="image-container">
+            <img
+              src="https://news.mit.edu/sites/default/files/styles/news_article__image_gallery/public/images/202309/MIT-USNews-Colleges-01-press_0.jpg?itok=s3dpEUeh"
+            />
+            <span class="image-desc"> Figure 3: MIT </span>
+          </p>
+          <p class="text-container">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Sem
+            viverra aliquet eget sit amet tellus. Ligula ullamcorper malesuada
+            proin libero nunc consequat interdum varius. Scelerisque viverra
+            mauris in aliquam sem fringilla ut morbi. Quisque sagittis purus sit
+            amet volutpat consequat. Amet justo donec enim diam. Amet aliquam id
+            diam maecenas ultricies mi. Malesuada nunc vel risus commodo
+            viverra. Tempus quam pellentesque nec nam aliquam sem et. Lorem sed
+            risus ultricies tristique nulla aliquet enim tortor.
+          </p>
+        </div>
+        <div class="container">
+          <p class="text-container full">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Sem
+            viverra aliquet eget sit amet tellus. Ligula ullamcorper malesuada
+            proin libero nunc consequat interdum varius. Scelerisque viverra
+            mauris in aliquam sem fringilla ut morbi. Quisque sagittis purus sit
+            amet volutpat consequat. Amet justo donec enim diam. Amet aliquam id
+            diam maecenas ultricies mi. Malesuada nunc vel risus commodo
+            viverra. Tempus quam pellentesque nec nam aliquam sem et. Lorem sed
+            risus ultricies tristique nulla aliquet enim tortor.
+          </p>
+        </div>
+        <div class="container display-flex content-space-between">
+          <p class="text-container">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Sem
+            viverra aliquet eget sit amet tellus. Ligula ullamcorper malesuada
+            proin libero nunc consequat interdum varius. Scelerisque viverra
+            mauris in aliquam sem fringilla ut morbi. Quisque sagittis purus sit
+            amet volutpat consequat. Amet justo donec enim diam. Amet aliquam id
+            diam maecenas ultricies mi. Malesuada nunc vel risus commodo
+            viverra. Tempus quam pellentesque nec nam aliquam sem et. Lorem sed
+            risus ultricies tristique nulla aliquet enim tortor.
+          </p>
+          <p class="image-container">
+            <img
+              src="https://images.unsplash.com/photo-1579353977828-2a4eab540b9a?q=80&w=1548&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            />
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <script>
+      // Function to show the selected chart
+      function showChart(chartId) {
+        // Hide all charts
+        const chartContainers = document.querySelectorAll(".chart-container");
+        chartContainers.forEach((container) =>
+          container.classList.remove("active-chart")
+        );
+
+        // Deactivate all tabs
+        const tabs = document.querySelectorAll(".tab-button");
+        tabs.forEach((tab) => tab.classList.remove("active"));
+
+        // Show the selected chart
+        const selectedChart = document.getElementById(`${chartId}Chart`);
+        selectedChart.classList.add("active-chart");
+
+        // Activate the selected tab
+        const selectedTab = document.querySelector(
+          `[onclick="showChart('${chartId}')"]`
+        );
+        selectedTab.classList.add("active");
+      }
+
+      // Set the default tab to be open (Province of Leyte)
+      document.getElementById("defaultOpen").click();
+    </script>
+
+    <script>
+      var jsonDataArray = [];
+      var deckInstance = null;
+      var currentDateStr = "";
+
+      async function initializeMap() {
+        deckInstance = new deck.DeckGL({
+          mapStyle:
+            "https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+          initialViewState: {
+            longitude: 124.76,
+            latitude: 10.96,
+            zoom: 7,
+          },
+          controller: true,
+          container: "map-container",
+          pickingRadius: 100,
+          getTooltip: ({ x, y, object }) =>
+            object && {
+              html: `<div>Province: ${object.province}</div>
+                    <div>Municipality: ${object.municipality}</div>
+                    <div>Brightness: ${object.absoluteBrightnessByDate[currentDateStr]}</div>`,
+              style: {
+                "font-size": "12px",
+                "border-radius": "4px",
+                "background-color": "#011d34",
+                "line-height": "1.5em",
+              },
+            },
+        });
+      }
+
+      async function renderLayer(index) {
+        if (jsonDataArray.length === 0 || !jsonDataArray[index]) {
+          console.error(
+            "Invalid data structure or missing data at index " + index
+          );
+          return;
+        }
+
+        let dateString = getDateAtIndex(index);
+        currentDateStr = dateString;
+
+        deckInstance.setProps({
+          layers: [
+            new deck.HeatmapLayer({
+              id: "heatmapLayer",
+              data: jsonDataArray,
+              getPosition: (d) => [d.longitude, d.latitude],
+              getWeight: (d) => d.absoluteBrightnessByDate[dateString],
+              aggregation: "SUM",
+              radiusPixels: 25,
+              updateTriggers: {
+                getWeight: dateString,
+              },
+              getPickingInfo: (pickParams) =>
+                pickParams && { objectValue: "Hello" },
+            }),
+            new deck.TextLayer({
+              id: "tooltip",
+              data: jsonDataArray,
+              getPosition: (d) => [d.longitude, d.latitude],
+              getText: (d) =>
+                `${d.province || ""}\n${d.municipality || ""}\nBrightness: ${
+                  d.brightness || ""
+                }`,
+              // getText: d => " ",
+              getColor: [255, 255, 255, 0],
+              getSize: 16,
+              pickable: true,
+              fontFamily: "Arial",
+            }),
+          ],
+        });
+
+        // Update the displayed date in the date__holder
+        document.getElementById("selected-date").textContent =
+          formatDate(dateString);
+      }
+
+      function formatDate(dateString) {
+        const dateObj = new Date(dateString);
+        const options = { month: "long", day: "numeric", year: "numeric" };
+        return dateObj.toLocaleDateString("en-US", options);
+      }
+
+      function getDateAtIndex(index) {
+        if (jsonDataArray.length === 0 || !jsonDataArray[index]) {
+          console.error(
+            "Invalid data structure or missing data at index " + index
+          );
+          return;
+        }
+
+        const dates = Object.keys(
+          jsonDataArray[index].absoluteBrightnessByDate
+        );
+        return dates[index];
+      }
+
+      async function fetchJson() {
+        try {
+          const response = await fetch("region8_brightness.json");
+
+          if (!response.ok) {
+            throw new Error(`Error fetching JSON file: ${response.statusText}`);
+          }
+
+          const jsonData = await response.json();
+          return jsonData;
+        } catch (error) {
+          console.error(error.message);
+          return null;
+        }
+      }
+
+      async function updateDate(index) {
+        await renderLayer(index);
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        jsonDataArray = await fetchJson();
+
+        const dateSlide = document.getElementById("date-slide");
+        dateSlide.min = 0;
+        dateSlide.max = jsonDataArray.length - 1;
+        dateSlide.step = 1;
+
+        await initializeMap();
+        await renderLayer(0);
+      });
+    </script>
+  </body>
+</html>
