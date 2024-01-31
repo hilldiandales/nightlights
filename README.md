@@ -1,6 +1,6 @@
 # Super Typhoon Yolanda: A Case Study in Remote Sensing-Based Disaster Response
 
-This is the accompanying notebook for our submission to the [Pale Blue Dot Visualization Challenge](https://www.drivendata.org/competitions/256/pale-blue-dot/page/802/). For more context about this notebook, make sure to visit our [project website](https://hilldiandales.github.io/nightlights/) where we display our visualizations, add more scientific context, and outline our methods.
+This is the accompanying notebook for our submission to the [Pale Blue Dot Visualization Challenge](https://www.drivendata.org/competitions/256/pale-blue-dot/page/802/). For more context about this repo, make sure to visit our [project website](https://hilldiandales.github.io/nightlights/) where we display our visualizations, add more scientific context, and outline our methods.
 
 ## Overview
 
