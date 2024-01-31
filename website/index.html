@@ -35,7 +35,244 @@
     <meta property="og:title" content="Home">
     <meta property="og:description" content="">
     <meta property="og:type" content="website">
-  <meta data-intl-tel-input-cdn-path="intlTelInput/"></head>
+  <meta data-intl-tel-input-cdn-path="intlTelInput/">
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <!-- optional if mapbox base map is needed -->
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.0/mapbox-gl.js"></script>
+    <link
+      href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <!-- Allow the map to render in full screen -->
+
+    <!-- Chart JS for Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
+
+      body {
+        margin: 0;
+        font-family: "Roboto", sans-serif;
+        display: flex;
+        flex-direction: column;
+        /* height: 100vh; */
+      }
+
+      .map-container {
+        flex-grow: 1;
+        position: relative;
+        height: 90vh;
+        overflow: hidden;
+      }
+
+      #map-legend {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 80px;
+        background-color: #0f3554;
+        z-index: 5;
+      }
+
+      .legend__section {
+        display: flex;
+        align-items: center;
+        justify-content: start;
+        width: 100%;
+        height: 100%;
+      }
+
+      .date__holder p {
+        font-size: 18px;
+        font-weight: 600;
+        padding-left: 20px;
+        color: #fff;
+      }
+
+      .date__holder {
+        width: 15%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        background-color: #0f3554;
+      }
+
+      .input__bar {
+        width: 80%;
+        padding-left: 8px;
+      }
+
+      .input__bar input#date-slide {
+        width: 100%;
+        height: 20px;
+        -webkit-appearance: none;
+        margin: 10px 0;
+      }
+
+      /* Style for the track (the slider line) */
+      .input__bar input#date-slide::-webkit-slider-runnable-track {
+        height: 3px;
+        background: #2c353c70;
+        border-radius: 2px;
+      }
+
+      /* Style for the thumb (the slider handle) */
+      .input__bar input#date-slide::-webkit-slider-thumb {
+        height: 20px;
+        width: 10px;
+        background: #2c353c70;
+        border: 1px solid #2c353c70;
+        -webkit-appearance: none;
+        margin-top: -8px;
+      }
+
+      /* Style for the colored portion of the track (selected range) */
+      input[type="range"]::-webkit-slider-runnable-track::-moz-range-progress {
+        background-color: #007bff;
+      }
+
+      input[type="range"]::-webkit-slider-runnable-track::-webkit-progress-value {
+        background-color: #007bff;
+      }
+
+      #myChart {
+        width: 100%;
+        height: 300px;
+      }
+
+      .graph-container {
+        /* display: grid; */
+        /* grid-template-columns: repeat(2, 1fr); */
+        gap: 1.5rem;
+        width: 70%;
+        /* padding: 2rem; */
+        margin-top: 1rem;
+        /* overflow: hidden; */
+      }
+
+      .graph-container .chart-container {
+        border: 1px solid #2c353c70;
+        padding: 5px;
+        text-align: center;
+        border-radius: 10px;
+      }
+
+      .graph-container .chart-container h4 {
+        margin: 1rem 0;
+      }
+
+      /* .graph-container {
+        display: flex;
+        flex-wrap: wrap;
+      } */
+
+      .chart-container {
+        display: none;
+      }
+
+      .active-chart {
+        display: block;
+      }
+
+      .tab-button {
+        border: none;
+        padding: 10px;
+        margin: 0;
+        cursor: pointer;
+      }
+
+      .tab-button.active {
+        background: #0f3554;
+        color: #fff; /* Active color for the selected tab */
+      }
+
+      #tabs-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        margin-top: 1rem;
+        padding: 2rem;
+      }
+
+      /* Article related styles */
+      .article-container {
+        background-color: black;
+      }
+
+      article {
+        width: 60%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      article .container {
+        margin-bottom: 30px;
+      }
+
+      .display-flex {
+        display: flex;
+        align-items: center;
+      }
+
+      .display-flex.content-space-between {
+        justify-content: space-between;
+      }
+
+      article header .header {
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 50px;
+      }
+
+      article .image-container {
+        width: 30%;
+      }
+
+      article .image-container img {
+        width: 100%; /* Make the image fill the container */
+        height: auto; /* Maintain the aspect ratio of the image */
+        display: block;
+      }
+
+      article .image-container .image-desc {
+        color: #bac8d6;
+        font-size: 70%;
+      }
+
+      article .text-container {
+        width: 60%;
+        color: #bebdb1;
+        font-weight: 400;
+        font-size: 16px;
+        line-height: 31px;
+      }
+
+      article .text-container.full {
+        width: auto;
+      }
+
+      @media screen and (max-width: 768px) {
+        article .container.display-flex {
+          flex-flow: column;
+        }
+
+        article .image-container,
+        article .text-container {
+          width: auto;
+        }
+      }
+
+      @media screen and (max-width: 500px) {
+        .date__holder {
+            width: 13%;
+        }
+      }
+    </style>
+
+</head>
   <body data-home-page="Home.html" data-home-page-title="Home" data-path-to-root="./" data-include-products="false" class="u-body u-xl-mode" data-lang="en"><header class="u-black u-box-shadow u-clearfix u-header u-header" id="sec-aa43" data-href="https://nicepage.com"><div class="u-clearfix u-sheet u-sheet-1">
         <nav class="u-menu u-menu-one-level u-offcanvas u-menu-1">
           <div class="menu-collapse" style="font-size: 1.5rem; letter-spacing: 0px; font-weight: 700;">
@@ -216,7 +453,160 @@ typhoons and other natural disasters typically cause electricity outages, nightt
           <li>Hover over different municipalities to see how hard they were hit or how quickly they recovered. Pay special attention to Tacloban City and its surrounding municipalities as these areas suffered the most.</li>
           <li>What else do you notice?</li>
         </ul>
+
+	    <div class="map-container" id="map-container">
+	      <div id="map-legend">
+	        <div class="legend__section">
+	          <div class="date__holder">
+	            <p id="selected-date">November 6, 2013</p>
+	          </div>
+	          <div class="input__bar">
+	            <input
+	              id="date-slide"
+	              type="range"
+	              min="0"
+	              max="4"
+	              step="1"
+	              value="0"
+	              oninput="updateDate(this.value);"
+	            />
+	          </div>
+	        </div>
+	      </div>
+	    </div>
       </div>
+    <script>
+      var jsonDataArray = [];
+      var deckInstance = null;
+      var currentDateStr = "";
+
+      async function initializeMap() {
+        deckInstance = new deck.DeckGL({
+          mapStyle:
+            "https://tiles.basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+          initialViewState: {
+            longitude: 124.76,
+            latitude: 10.96,
+            zoom: 7,
+          },
+          controller: true,
+          container: "map-container",
+          pickingRadius: 100,
+          getTooltip: ({ x, y, object }) =>
+            object && {
+              html: `<div>Province: ${object.province}</div>
+                    <div>Municipality: ${object.municipality}</div>
+                    <div>Brightness: ${object.absoluteBrightnessByDate[currentDateStr]}</div>`,
+              style: {
+                "font-size": "12px",
+                "border-radius": "4px",
+                "background-color": "#011d34",
+                "line-height": "1.5em",
+              },
+            },
+        });
+      }
+
+      async function renderLayer(index) {
+        if (jsonDataArray.length === 0 || !jsonDataArray[index]) {
+          console.error(
+            "Invalid data structure or missing data at index " + index
+          );
+          return;
+        }
+
+        let dateString = getDateAtIndex(index);
+        currentDateStr = dateString;
+
+        deckInstance.setProps({
+          layers: [
+            new deck.HeatmapLayer({
+              id: "heatmapLayer",
+              data: jsonDataArray,
+              getPosition: (d) => [d.longitude, d.latitude],
+              getWeight: (d) => d.absoluteBrightnessByDate[dateString],
+              aggregation: "SUM",
+              radiusPixels: 25,
+              updateTriggers: {
+                getWeight: dateString,
+              },
+              getPickingInfo: (pickParams) =>
+                pickParams && { objectValue: "Hello" },
+            }),
+            new deck.TextLayer({
+              id: "tooltip",
+              data: jsonDataArray,
+              getPosition: (d) => [d.longitude, d.latitude],
+              getText: (d) =>
+                `${d.province || ""}\n${d.municipality || ""}\nBrightness: ${
+                  d.brightness || ""
+                }`,
+              // getText: d => " ",
+              getColor: [255, 255, 255, 0],
+              getSize: 16,
+              pickable: true,
+              fontFamily: "Arial",
+            }),
+          ],
+        });
+
+        // Update the displayed date in the date__holder
+        document.getElementById("selected-date").textContent =
+          formatDate(dateString);
+      }
+
+      function formatDate(dateString) {
+        const dateObj = new Date(dateString);
+        const options = { month: "long", day: "numeric", year: "numeric" };
+        return dateObj.toLocaleDateString("en-US", options);
+      }
+
+      function getDateAtIndex(index) {
+        if (jsonDataArray.length === 0 || !jsonDataArray[index]) {
+          console.error(
+            "Invalid data structure or missing data at index " + index
+          );
+          return;
+        }
+
+        const dates = Object.keys(
+          jsonDataArray[index].absoluteBrightnessByDate
+        );
+        return dates[index];
+      }
+
+      async function fetchJson() {
+        try {
+          const response = await fetch("region8_brightness.json");
+
+          if (!response.ok) {
+            throw new Error(`Error fetching JSON file: ${response.statusText}`);
+          }
+
+          const jsonData = await response.json();
+          return jsonData;
+        } catch (error) {
+          console.error(error.message);
+          return null;
+        }
+      }
+
+      async function updateDate(index) {
+        await renderLayer(index);
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        jsonDataArray = await fetchJson();
+
+        const dateSlide = document.getElementById("date-slide");
+        dateSlide.min = 0;
+        dateSlide.max = jsonDataArray.length - 1;
+        dateSlide.step = 1;
+
+        await initializeMap();
+        await renderLayer(0);
+      });
+    </script>
     </section>
     <section class="u-clearfix u-white u-section-8" id="sec-d97a">
       <div class="u-clearfix u-sheet u-sheet-1">
